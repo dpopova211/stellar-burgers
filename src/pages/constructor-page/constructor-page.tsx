@@ -1,11 +1,6 @@
-import { useSelector } from '../../services/store';
-
-import styles from './constructor-page.module.css';
-
-import { BurgerIngredients } from '../../components';
-import { BurgerConstructor } from '../../components';
-import { Preloader } from '../../components/ui';
 import { FC } from 'react';
+import styles from './constructor-page.module.css';
+import { BurgerIngredients, BurgerConstructor } from '../../components';
 
 export const ConstructorPage: FC = () => (
   <main className={styles.containerMain}>

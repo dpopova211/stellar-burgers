@@ -1,21 +1,25 @@
 import { FC, useMemo } from 'react';
 import { Preloader } from '../ui/preloader';
 import { OrderInfoUI } from '../ui/order-info';
-import { TIngredient } from '@utils-types';
+import { TIngredient, TOrder } from '@utils-types';
+import { useParams, useLocation } from 'react-router-dom';
+import { useSelector } from '../../services/store';
 
 export const OrderInfo: FC = () => {
-  /** TODO: взять переменные orderData и ingredients из стора */
-  const orderData = {
-    createdAt: '',
-    ingredients: [],
-    _id: '',
-    status: '',
-    name: '',
-    updatedAt: 'string',
-    number: 0
-  };
+  const { number } = useParams();
+  const location = useLocation();
+  const ordersAll = useSelector((state) => state.feed.orders);
+  const ordersProfile = useSelector((state) => state.profileOrders.orders);
+  const ingredients = useSelector((state) => state.ingredients.items);
 
-  const ingredients: TIngredient[] = [];
+  const orders = location.pathname.startsWith('/profile')
+    ? ordersProfile
+    : ordersAll;
+  const orderData = orders.find((o: TOrder) => o.number === Number(number));
+
+  if (!orderData || !ingredients.length) {
+    return <Preloader />;
+  }
 
   /* Готовим данные для отображения */
   const orderInfo = useMemo(() => {
@@ -40,7 +44,6 @@ export const OrderInfo: FC = () => {
         } else {
           acc[item].count++;
         }
-
         return acc;
       },
       {}
