@@ -7,18 +7,19 @@ import {
   wsConnectProfileOrders,
   wsDisconnectProfileOrders
 } from '../../services/slices/profileOrdersSlice';
+import { getCookie } from '../../utils/cookie';
 
 export const ProfileOrders: FC = () => {
   const dispatch = useDispatch();
   const orders: TOrder[] = useSelector((state) => state.profileOrders.orders);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getCookie('accessToken');
     if (accessToken) {
       const token = accessToken.replace('Bearer ', '');
       dispatch(
         wsConnectProfileOrders(
-          `wss://norma.education-services.ru/orders?token=...`
+          `wss://norma.education-services.ru/orders?token=${token}`
         )
       );
     }

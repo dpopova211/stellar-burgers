@@ -14,7 +14,7 @@ import {
   TUserResponse
 } from '../../utils/burger-api';
 import { TUser } from '@utils-types';
-import { setCookie } from '../../utils/cookie';
+import { setCookie, getCookie, deleteCookie } from '../../utils/cookie';
 import type { RootState } from '../store';
 
 interface UserState {
@@ -31,24 +31,42 @@ const initialState: UserState = {
   resetPasswordSuccess: false
 };
 
+const saveTokens = (accessToken: string, refreshToken: string) => {
+  setCookie('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
+};
+
 export const fetchUser = createAsyncThunk<TUserResponse>(
   'user/fetch',
   getUserApi
 );
 
-export const register = createAsyncThunk<TAuthResponse, TRegisterData>(
+export const register = createAsyncThunk<TUserResponse, TRegisterData>(
   'user/register',
-  registerUserApi
+  async (data) => {
+    const res = await registerUserApi(data);
+    saveTokens(res.accessToken, res.refreshToken);
+    return res;
+  }
 );
 
-export const login = createAsyncThunk<TAuthResponse, TLoginData>(
+export const login = createAsyncThunk<TUserResponse, TLoginData>(
   'user/login',
-  loginUserApi
+  async (data) => {
+    const res = await loginUserApi(data);
+    saveTokens(res.accessToken, res.refreshToken);
+    return res;
+  }
 );
 
 export const logout = createAsyncThunk<TServerResponse<{}>>(
   'user/logout',
-  logoutApi
+  async () => {
+    const res = await logoutApi();
+    deleteCookie('accessToken');
+    localStorage.removeItem('refreshToken');
+    return res;
+  }
 );
 
 export const update = createAsyncThunk<TUserResponse, Partial<TRegisterData>>(
@@ -90,12 +108,6 @@ const userSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.user = action.payload.user;
         state.error = null;
-        if (action.payload.accessToken) {
-          setCookie('accessToken', action.payload.accessToken);
-        }
-        if (action.payload.refreshToken) {
-          localStorage.setItem('refreshToken', action.payload.refreshToken);
-        }
       })
       .addCase(register.rejected, (state, action) => {
         state.error = action.error.message || 'Ошибка регистрации';
@@ -103,20 +115,12 @@ const userSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.user = action.payload.user;
         state.error = null;
-        if (action.payload.accessToken) {
-          setCookie('accessToken', action.payload.accessToken);
-        }
-        if (action.payload.refreshToken) {
-          localStorage.setItem('refreshToken', action.payload.refreshToken);
-        }
       })
       .addCase(login.rejected, (state, action) => {
         state.error = action.error.message || 'Неверный логин или пароль';
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        localStorage.removeItem('refreshToken');
-        setCookie('accessToken', '', { expires: -1 });
       })
       .addCase(update.fulfilled, (state, action) => {
         state.user = action.payload.user;

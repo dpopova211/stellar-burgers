@@ -4,6 +4,7 @@ import { constructorReducer } from './slices/constructorSlice';
 import { userReducer } from './slices/userSlice';
 import { feedReducer } from './slices/feedSlice';
 import { profileOrdersReducer } from './slices/profileOrdersSlice';
+import { orderReducer } from './slices/orderSlice';
 import {
   TypedUseSelectorHook,
   useDispatch as dispatchHook,
@@ -55,7 +56,8 @@ const rootReducer = {
   burgerConstructor: constructorReducer,
   user: userReducer,
   feed: feedReducer,
-  profileOrders: profileOrdersReducer
+  profileOrders: profileOrdersReducer,
+  order: orderReducer
 };
 
 export const store = configureStore({

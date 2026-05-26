@@ -2,9 +2,11 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { orderBurgerApi } from '../../utils/burger-api';
 import { TIngredient, TOrder } from '@utils-types';
 
+export type TIngredientWithId = TIngredient & { id: string };
+
 type ConstructorState = {
-  bun: TIngredient | null;
-  ingredients: TIngredient[];
+  bun: TIngredientWithId | null;
+  ingredients: TIngredientWithId[];
   orderRequest: boolean;
   orderModalData: TOrder | null;
 };
@@ -18,9 +20,8 @@ const initialState: ConstructorState = {
 
 export const createOrder = createAsyncThunk<TOrder, string[]>(
   'constructor/createOrder',
-  async (ingredientIds: string[]) => {
+  async (ingredientIds) => {
     const res = await orderBurgerApi(ingredientIds);
-    // Приводим ответ к типу TOrder (в реальности структура та же, просто нет поля ingredients в ответе)
     return res.order as unknown as TOrder;
   }
 );
@@ -29,12 +30,17 @@ const constructorSlice = createSlice({
   name: 'burgerConstructor',
   initialState,
   reducers: {
-    addIngredient: (state, action: PayloadAction<TIngredient>) => {
-      if (action.payload.type === 'bun') {
-        state.bun = action.payload;
-      } else {
-        state.ingredients.push(action.payload);
-      }
+    addIngredient: {
+      reducer: (state, action: PayloadAction<TIngredientWithId>) => {
+        if (action.payload.type === 'bun') {
+          state.bun = action.payload;
+        } else {
+          state.ingredients.push(action.payload);
+        }
+      },
+      prepare: (ingredient: TIngredient) => ({
+        payload: { ...ingredient, id: crypto.randomUUID() }
+      })
     },
     removeIngredient: (state, action: PayloadAction<number>) => {
       state.ingredients.splice(action.payload, 1);
