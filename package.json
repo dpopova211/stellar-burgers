@@ -93,8 +93,8 @@
     "lint": "eslint --ext .js,.jsx,.ts,.tsx ./src",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier ./src --write",
-    "test": "react-scripts test",
-    "test:coverage": "react-scripts test --coverage",
+    "test": "jest --watchAll=false",
+    "test:coverage": "jest --coverage",
     "playwright:test": "npx playwright test"
   },
   "eslintConfig": {

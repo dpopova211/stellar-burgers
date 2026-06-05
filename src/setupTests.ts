@@ -5,9 +5,9 @@ if (!globalThis.crypto) {
 }
 if (!globalThis.crypto.randomUUID) {
   let counter = 0;
-  globalThis.crypto.randomUUID = () => {
+  (globalThis.crypto as any).randomUUID = function () {
     const hex = counter.toString(16).padStart(12, '0');
     counter++;
-    return `00000000-0000-0000-0000-${hex}` as `${string}-${string}-${string}-${string}-${string}`;
+    return `00000000-0000-0000-0000-${hex}`;
   };
 }

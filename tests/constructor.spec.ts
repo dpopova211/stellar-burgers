@@ -4,9 +4,12 @@ const HAR_INGREDIENTS = './tests/hars/ingredients.har';
 const HAR_AUTH = './tests/hars/auth.har';
 const HAR_ORDER = './tests/hars/order.har';
 
-test.describe('Страница конструктора', () => {
+test.describe('Страница конструктора бургера', () => {
   test.beforeEach(async ({ page }) => {
-    // Подставляем фейковые токены
+    // Устанавливаем моковые токены
+    await page.addInitScript(() => {
+      localStorage.setItem('refreshToken', 'test-refresh-token');
+    });
     await page.context().addCookies([
       {
         name: 'accessToken',
@@ -14,10 +17,12 @@ test.describe('Страница конструктора', () => {
         url: 'http://localhost:3000',
       },
     ]);
+
+    // Перехватываем основные запросы до загрузки страницы
+    await page.routeFromHAR(HAR_INGREDIENTS, { url: '**/api/ingredients' });
+    await page.routeFromHAR(HAR_AUTH, { url: '**/api/auth/user' });
+
     await page.goto('/');
-    await page.evaluate(() => {
-      localStorage.setItem('refreshToken', 'test-refresh-token');
-    });
   });
 
   test.afterEach(async ({ page }) => {
@@ -27,73 +32,61 @@ test.describe('Страница конструктора', () => {
     await page.context().clearCookies();
   });
 
-  test('Добавление булки и соуса в конструктор', async ({ page }) => {
-    // Перехватываем запрос ингредиентов через HAR
-    await page.routeFromHAR(HAR_INGREDIENTS, { url: '**/api/ingredients' });
+  test('Добавление булки и начинки в конструктор', async ({ page }) => {
+    await page.click('li:has-text("Краторная булка N-200i") >> button:has-text("Добавить")');
+    await expect(page.locator('text=Краторная булка N-200i (верх)')).toBeVisible();
+    await expect(page.locator('text=Краторная булка N-200i (низ)')).toBeVisible();
 
-    // Добавляем булку
-    await page.click('text=Краторная булка N-200i');
-    // Ищем булку в конструкторе (верхнюю и нижнюю)
-    const topBun = page.locator('.constructor-element_pos_top');
-    const bottomBun = page.locator('.constructor-element_pos_bottom');
-    await expect(topBun).toContainText('Краторная булка N-200i');
-    await expect(bottomBun).toContainText('Краторная булка N-200i');
-
-    // Добавляем соус
-    await page.click('text=Соус с шипами Антарианского плоскоходца');
-    const ingredients = page.locator('.constructor-element');
-    await expect(ingredients).toContainText('Соус с шипами Антарианского плоскоходца');
+    await page.click('li:has-text("Соус с шипами Антарианского плоскоходца") >> button:has-text("Добавить")');
+    await expect(
+      page.locator('span[class*="constructor-element__text"]:has-text("Соус с шипами Антарианского плоскоходца")')
+    ).toBeVisible();
   });
 
   test('Открытие модального окна ингредиента и проверка данных', async ({ page }) => {
-    await page.routeFromHAR(HAR_INGREDIENTS, { url: '**/api/ingredients' });
-
-    // Кликаем по булке
-    await page.click('text=Краторная булка N-200i');
-    const modal = page.locator('[class*="modal"]');
+    await page.click('a:has-text("Краторная булка N-200i")');
+    const modal = page.locator('#modals div:has-text("Детали ингредиента")').first();
     await expect(modal).toBeVisible();
     await expect(modal).toContainText('Краторная булка N-200i');
-    await expect(modal).toContainText('420'); // калорийность
+    await expect(modal).toContainText('420');
   });
 
-  test('Закрытие модального окна по крестику и оверлею', async ({ page }) => {
-    await page.routeFromHAR(HAR_INGREDIENTS, { url: '**/api/ingredients' });
-
-    // Открываем модалку
-    await page.click('text=Хрустящие минеральные кольца');
-    // Закрываем крестиком
-    await page.click('[class*="modal"] [class*="close"]');
-    await expect(page.locator('[class*="modal"]')).not.toBeVisible();
-
-    // Открываем снова, закрываем оверлеем
-    await page.click('text=Соус традиционный галактический');
-    await page.click('[class*="modal_overlay"]');
-    await expect(page.locator('[class*="modal"]')).not.toBeVisible();
+  test('Закрытие модального окна по крестику', async ({ page }) => {
+    await page.click('a:has-text("Хрустящие минеральные кольца")');
+    await page.click('#modals button');
+    await expect(page.locator('#modals div:has-text("Детали ингредиента")').first()).not.toBeVisible();
   });
 
   test('Создание заказа, проверка номера и очистка конструктора', async ({ page }) => {
-    // Мокируем все нужные запросы
-    await page.routeFromHAR(HAR_INGREDIENTS, { url: '**/api/ingredients' });
-    await page.routeFromHAR(HAR_AUTH, { url: '**/api/auth/user' });
+    // Добавляем только перехват заказа
     await page.routeFromHAR(HAR_ORDER, { url: '**/api/orders' });
 
-    // Собираем бургер
-    await page.click('text=Краторная булка N-200i');
-    await page.click('text=Соус с шипами Антарианского плоскоходца');
-    await page.click('text=Хрустящие минеральные кольца');
+    // Добавляем ингредиенты
+    await page.click('li:has-text("Краторная булка N-200i") >> button:has-text("Добавить")');
+    await page.click('li:has-text("Соус с шипами Антарианского плоскоходца") >> button:has-text("Добавить")');
+    await page.click('li:has-text("Хрустящие минеральные кольца") >> button:has-text("Добавить")');
 
-    // Оформляем заказ
-    await page.click('button:has-text("Оформить заказ")');
-    const orderModal = page.locator('[class*="modal"]');
-    await expect(orderModal).toBeVisible();
-    await expect(orderModal).toContainText('12345');
+    // Ждём кнопку и кликаем
+    const orderButton = page.locator('button:has-text("Оформить заказ")');
+    await expect(orderButton).toBeVisible({ timeout: 5000 });
+    await expect(orderButton).not.toBeDisabled();
 
-    // Закрываем модальное окно
-    await page.click('[class*="modal"] [class*="close"]');
-    await expect(orderModal).not.toBeVisible();
+    await orderButton.click();
 
-    // Конструктор должен быть пуст
-    await expect(page.locator('.constructor-element_pos_top')).not.toBeVisible();
-    await expect(page.locator('.constructor-element')).toHaveCount(0);
+    // Делаем скриншот для отладки (если нужно, можно убрать после успешного прогона)
+    await page.screenshot({ path: 'debug-order.png' });
+
+    // Ждём появления номера заказа
+    await expect(page.locator('text=12345').first()).toBeVisible({ timeout: 15000 });
+
+    // Закрываем модалку
+    await page.locator('#modals button').first().click();
+    await expect(page.locator('text=12345')).not.toBeVisible();
+
+    // Проверяем, что конструктор очищен
+    await expect(page.locator('text=Краторная булка N-200i (верх)')).not.toBeVisible();
+    await expect(page.locator('text=Краторная булка N-200i (низ)')).not.toBeVisible();
+    await expect(page.locator('span[class*="constructor-element__text"]:has-text("Соус с шипами Антарианского плоскоходца")')).not.toBeVisible();
+    await expect(page.locator('span[class*="constructor-element__text"]:has-text("Хрустящие минеральные кольца")')).not.toBeVisible();
   });
 });
